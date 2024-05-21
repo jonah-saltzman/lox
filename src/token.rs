@@ -56,7 +56,7 @@ pub enum TokenType {
 pub struct Token<'a> {
     kind: TokenType,
     lexeme: &'a AsciiStr,
-    object: Option<Object>,
+    object: Object,
     line: usize,
     start: usize,
     end: usize,
@@ -66,7 +66,7 @@ impl<'a> Token<'a> {
     pub fn new(
         kind: TokenType,
         lexeme: &'a AsciiStr,
-        object: Option<Object>,
+        object: Object,
         line: usize,
         start: usize,
         end: usize,
@@ -81,7 +81,7 @@ impl<'a> Token<'a> {
         }
     }
 
-    pub fn into_object(self) -> Option<Object> {
+    pub fn into_object(self) -> Object {
         self.object
     }
 }

@@ -1,7 +1,7 @@
 use clap::{Command, Arg};
 use std::path::Path;
-use jlox::{JLox, cli};
-use anyhow::{Ok, Result};
+use jlox::{cli, JLox, LoxError, object::Object};
+use anyhow::Result;
 
 fn main() -> Result<()> {
     let matches = Command::new("My App")
@@ -19,17 +19,37 @@ fn main() -> Result<()> {
     if let Some(path) = matches.get_one::<String>("path") {
         let p = Path::new(path);
         let source = cli::load_source(p)?;
-        let out = interpreter.handle_source(&source)?;
-        println!("{:?}", out);
+        let out = interpreter.handle_source(&source);
+        handle_output(out);
         Ok(())
     } else {
         let reader = cli::StdinLines::new();
         for line in reader {
             let line = line?;
             let out = interpreter.handle_source(&line);
-            println!("{:?}", out);
+            handle_output(out);
+            println!("");
             interpreter.reset_error();
         }
         Ok(())
+    }
+}
+
+fn handle_output(out: Result<Object, LoxError>) {
+    match out {
+        Ok(obj) if obj.is_some() => println!("{}", obj),
+        Err(e) => {
+            let err = anyhow::Error::from(e);
+            eprintln!("{}", err);
+            let mut cause = err.source();
+            let mut spaces = 2;
+            while let Some(inner) = cause {
+                let prefix: String = std::iter::repeat(' ').take(spaces).collect();
+                eprintln!("{}caused by: {}", prefix, inner);
+                cause = inner.source();
+                spaces += 2;
+            }
+        },
+        _ => {}
     }
 }

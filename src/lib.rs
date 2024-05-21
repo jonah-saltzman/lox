@@ -1,7 +1,7 @@
 pub mod cli;
 pub mod scan;
+pub mod object;
 mod token;
-mod object;
 
 use ascii::AsciiStr;
 use thiserror::Error;
@@ -26,10 +26,10 @@ impl JLox {
         }
     }
 
-    pub fn handle_source(&mut self, source: &AsciiStr) -> Result<Option<Object>, LoxError> {
+    pub fn handle_source(&mut self, source: &AsciiStr) -> Result<Object, LoxError> {
         let mut scanner = Scanner::new(source);
         let tokens = scanner.scan()?;
-        let mut last: Option<Object> = None;
+        let mut last: Object = Object::None;
         for t in tokens {
             println!("{:?}", t);
             last = t.into_object()

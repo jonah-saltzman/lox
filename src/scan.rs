@@ -5,7 +5,10 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ScanError {
     #[error("invalid token {0}")]
-    InvalidToken(String)
+    InvalidToken(String),
+
+    #[error("unterminated string")]
+    UnterminatedString
 }
 
 pub struct Scanner<'a> {
@@ -38,42 +41,42 @@ impl <'a> Scanner<'a> {
         match self.advance() {
             Some(ch) => {
                 match ch {
-                    AsciiChar::ParenOpen => Ok(Some(self.get_token(TokenType::LeftParen, None))),
-                    AsciiChar::ParenClose => Ok(Some(self.get_token(TokenType::RightParen, None))),
-                    AsciiChar::CurlyBraceOpen => Ok(Some(self.get_token(TokenType::LeftBrace, None))),
-                    AsciiChar::CurlyBraceClose => Ok(Some(self.get_token(TokenType::RightBrace, None))),
-                    AsciiChar::Comma => Ok(Some(self.get_token(TokenType::Comma, None))),
-                    AsciiChar::Dot => Ok(Some(self.get_token(TokenType::Dot, None))),
-                    AsciiChar::Minus => Ok(Some(self.get_token(TokenType::Minus, None))),
-                    AsciiChar::Plus => Ok(Some(self.get_token(TokenType::Plus, None))),
-                    AsciiChar::Semicolon => Ok(Some(self.get_token(TokenType::Semicolon, None))),
-                    AsciiChar::Asterisk => Ok(Some(self.get_token(TokenType::Star, None))),
+                    AsciiChar::ParenOpen => Ok(Some(self.get_token(TokenType::LeftParen, Object::None))),
+                    AsciiChar::ParenClose => Ok(Some(self.get_token(TokenType::RightParen, Object::None))),
+                    AsciiChar::CurlyBraceOpen => Ok(Some(self.get_token(TokenType::LeftBrace, Object::None))),
+                    AsciiChar::CurlyBraceClose => Ok(Some(self.get_token(TokenType::RightBrace, Object::None))),
+                    AsciiChar::Comma => Ok(Some(self.get_token(TokenType::Comma, Object::None))),
+                    AsciiChar::Dot => Ok(Some(self.get_token(TokenType::Dot, Object::None))),
+                    AsciiChar::Minus => Ok(Some(self.get_token(TokenType::Minus, Object::None))),
+                    AsciiChar::Plus => Ok(Some(self.get_token(TokenType::Plus, Object::None))),
+                    AsciiChar::Semicolon => Ok(Some(self.get_token(TokenType::Semicolon, Object::None))),
+                    AsciiChar::Asterisk => Ok(Some(self.get_token(TokenType::Star, Object::None))),
                     AsciiChar::Exclamation => {
                         if self.matches(AsciiChar::Equal) {
-                            Ok(Some(self.get_token(TokenType::BangEqual, None)))
+                            Ok(Some(self.get_token(TokenType::BangEqual, Object::None)))
                         } else {
-                            Ok(Some(self.get_token(TokenType::Bang, None)))
+                            Ok(Some(self.get_token(TokenType::Bang, Object::None)))
                         }
                     }
                     AsciiChar::Equal => {
                         if self.matches(AsciiChar::Equal) {
-                            Ok(Some(self.get_token(TokenType::EqualEqual, None)))
+                            Ok(Some(self.get_token(TokenType::EqualEqual, Object::None)))
                         } else {
-                            Ok(Some(self.get_token(TokenType::Equal, None)))
+                            Ok(Some(self.get_token(TokenType::Equal, Object::None)))
                         }
                     }
                     AsciiChar::LessThan => {
                         if self.matches(AsciiChar::Equal) {
-                            Ok(Some(self.get_token(TokenType::LessEqual, None)))
+                            Ok(Some(self.get_token(TokenType::LessEqual, Object::None)))
                         } else {
-                            Ok(Some(self.get_token(TokenType::Less, None)))
+                            Ok(Some(self.get_token(TokenType::Less, Object::None)))
                         }
                     }
                     AsciiChar::GreaterThan => {
                         if self.matches(AsciiChar::Equal) {
-                            Ok(Some(self.get_token(TokenType::GreaterEqual, None)))
+                            Ok(Some(self.get_token(TokenType::GreaterEqual, Object::None)))
                         } else {
-                            Ok(Some(self.get_token(TokenType::Greater, None)))
+                            Ok(Some(self.get_token(TokenType::Greater, Object::None)))
                         }
                     }
                     AsciiChar::Slash => {
@@ -83,14 +86,19 @@ impl <'a> Scanner<'a> {
                             }
                             self.next_token()
                         } else {
-                            Ok(Some(self.get_token(TokenType::Slash, None)))
+                            Ok(Some(self.get_token(TokenType::Slash, Object::None)))
                         }
                     },
                     AsciiChar::Space | AsciiChar::CarriageReturn | AsciiChar::Tab => self.next_token(),
                     AsciiChar::LineFeed => {
                         self.line += 1;
                         self.next_token()
-                    }
+                    },
+                    AsciiChar::Quotation => {
+                        let literal = self.string()?;
+                        let owned = literal.to_owned();
+                        Ok(Some(self.get_token(TokenType::String, Object::Str(owned))))
+                    },
                     _ => Err(ScanError::InvalidToken(ch.to_string()))
                 }
             },
@@ -98,7 +106,7 @@ impl <'a> Scanner<'a> {
         }
     }
 
-    fn get_token(&self, kind: TokenType, literal: Option<Object>) -> Token<'a> {
+    fn get_token(&self, kind: TokenType, literal: Object) -> Token<'a> {
         let lexeme = &self.source[self.start..self.current];
         Token::new(kind, lexeme, literal, self.line, self.start, self.current)
     }
@@ -130,5 +138,20 @@ impl <'a> Scanner<'a> {
         };
         self.current += 1;
         c
+    }
+
+    fn string(&mut self) -> Result<&AsciiStr, ScanError> {
+        while !self.is_done() && self.peek() != AsciiChar::Quotation {
+            if self.peek() == AsciiChar::LineFeed {
+                self.line += 1
+            }
+            self.advance();
+        }
+        if self.is_done() {
+            Err(ScanError::UnterminatedString)
+        } else {
+            self.advance();
+            Ok(&self.source[self.start + 1..self.current - 1])
+        }
     }
 }
