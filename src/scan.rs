@@ -1,6 +1,26 @@
 use crate::{object::Object, token::{Token, TokenType}};
 use ascii::{AsciiStr, AsciiChar};
 use thiserror::Error;
+use phf::phf_map;
+
+static RESERVED: phf::Map<&'static str, TokenType> = phf_map! {
+    "and" => TokenType::And,
+    "class" => TokenType::Class,
+    "else" => TokenType::Else,
+    "false" => TokenType::False,
+    "for" => TokenType::For,
+    "fun" => TokenType::Fun,
+    "if" => TokenType::If,
+    "nil" => TokenType::Nil,
+    "or" => TokenType::Or,
+    "print" => TokenType::Print,
+    "return" => TokenType::Return,
+    "super" => TokenType::Super,
+    "this" => TokenType::This,
+    "true" => TokenType::True,
+    "var" => TokenType::Var,
+    "while" => TokenType::While
+};
 
 #[derive(Error, Debug)]
 pub enum ScanError {
@@ -102,9 +122,17 @@ impl <'a> Scanner<'a> {
                         let owned = literal.to_owned();
                         Ok(Some(self.get_token(TokenType::String, Object::Str(owned))))
                     },
-                    d if is_digit(d) => {
+                    d if d.is_ascii_digit() => {
                         let literal = self.number()?;
                         Ok(Some(self.get_token(TokenType::Number, Object::Num(literal))))
+                    },
+                    c if c.is_ascii_alphabetic() => {
+                        self.identifier();
+                        let id = &self.source[self.start..self.current];
+                        match RESERVED.get(id.as_str()) {
+                            Some(&kw) => Ok(Some(self.get_token(kw, Object::None))),
+                            None => Ok(Some(self.get_token(TokenType::Identifier(id), Object::None)))
+                        }
                     },
                     _ => Err(ScanError::InvalidToken(ch.to_string()))
                 }
@@ -113,7 +141,7 @@ impl <'a> Scanner<'a> {
         }
     }
 
-    fn get_token(&self, kind: TokenType, literal: Object) -> Token<'a> {
+    fn get_token(&self, kind: TokenType<'a>, literal: Object) -> Token<'a> {
         let lexeme = &self.source[self.start..self.current];
         Token::new(kind, lexeme, literal, self.line, self.start, self.current)
     }
@@ -167,12 +195,12 @@ impl <'a> Scanner<'a> {
     }
 
     fn number(&mut self) -> Result<f64, ScanError> {
-        while is_digit(self.peek().as_byte()) {
+        while self.peek().is_ascii_digit() {
             self.advance();
         }
-        if self.peek() == AsciiChar::Dot && is_digit(self.peek_next().as_byte()) {
+        if self.peek() == AsciiChar::Dot && self.peek_next().is_ascii_digit() {
             self.advance();
-            while is_digit(self.peek().as_byte()) {
+            while self.peek().is_ascii_digit() {
                 self.advance();
             }
         }
@@ -180,8 +208,10 @@ impl <'a> Scanner<'a> {
         Ok(chars.parse::<f64>()?)
     }
 
-}
+    fn identifier(&mut self) {
+        while !self.is_done() && self.peek().is_ascii_alphanumeric() {
+            self.advance();
+        }
+    }
 
-fn is_digit(ch: u8) -> bool {
-    ch >= b'0' && ch <= b'9'
 }

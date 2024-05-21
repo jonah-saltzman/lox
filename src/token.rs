@@ -1,8 +1,8 @@
 use super::object::Object;
 use ascii::AsciiStr;
 
-#[derive(Debug)]
-pub enum TokenType {
+#[derive(Debug, Clone, Copy)]
+pub enum TokenType<'a> {
     // Single-character tokens.
     LeftParen,
     RightParen,
@@ -27,7 +27,7 @@ pub enum TokenType {
     LessEqual,
 
     // Literals.
-    Identifier,
+    Identifier(&'a AsciiStr),
     String,
     Number,
 
@@ -54,7 +54,7 @@ pub enum TokenType {
 
 #[derive(Debug)]
 pub struct Token<'a> {
-    kind: TokenType,
+    kind: TokenType<'a>,
     lexeme: &'a AsciiStr,
     object: Object,
     line: usize,
@@ -64,7 +64,7 @@ pub struct Token<'a> {
 
 impl<'a> Token<'a> {
     pub fn new(
-        kind: TokenType,
+        kind: TokenType<'a>,
         lexeme: &'a AsciiStr,
         object: Object,
         line: usize,
