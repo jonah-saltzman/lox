@@ -1,8 +1,9 @@
 use clap::{Command, Arg};
 use std::path::Path;
 use jlox::{JLox, cli};
+use anyhow::{Ok, Result};
 
-fn main() {
+fn main() -> Result<()> {
     let matches = Command::new("My App")
         .version("1.0")
         .author("Your Name")
@@ -17,21 +18,18 @@ fn main() {
 
     if let Some(path) = matches.get_one::<String>("path") {
         let p = Path::new(path);
-        if p.exists() {
-            match cli::load_source(p) {
-                Ok(source) => interpreter.handle_source(&source),
-                Err(e) => println!("Err: {e}")
-            }
-        } else {
-            println!("{} not found", path)
-        }
+        let source = cli::load_source(p)?;
+        let out = interpreter.handle_source(&source)?;
+        println!("{:?}", out);
+        Ok(())
     } else {
         let reader = cli::StdinLines::new();
         for line in reader {
-            match line {
-                Ok(source) => interpreter.handle_source(&source),
-                Err(e) => println!("Err: {e}")
-            }
+            let line = line?;
+            let out = interpreter.handle_source(&line);
+            println!("{:?}", out);
+            interpreter.reset_error();
         }
+        Ok(())
     }
 }
