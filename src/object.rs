@@ -3,14 +3,16 @@ use ascii::AsciiString;
 #[derive(Debug, PartialEq)]
 pub enum Object {
     None,
-    Str(AsciiString)
+    Str(AsciiString),
+    Num(f64)
 }
 
 impl std::fmt::Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Object::Str(s) => f.write_fmt(format_args!("'{}'", s)),
-            _ => Ok(())
+            Object::Num(n) => f.write_fmt(format_args!("{}", n)),
+            Object::None => Ok(())
         }
     }
 }
