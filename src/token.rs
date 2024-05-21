@@ -1,5 +1,6 @@
 use super::object::Object;
 use ascii::AsciiStr;
+use derive_more::derive::Debug;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TokenType<'a> {
@@ -58,8 +59,12 @@ pub struct Token<'a> {
     lexeme: &'a AsciiStr,
     object: Object,
     line: usize,
+    #[debug(skip)]
     start: usize,
+    #[debug(skip)]
     end: usize,
+    col_start: usize,
+    col_end: usize
 }
 
 impl<'a> Token<'a> {
@@ -70,6 +75,8 @@ impl<'a> Token<'a> {
         line: usize,
         start: usize,
         end: usize,
+        col_start: usize,
+        col_end: usize
     ) -> Self {
         Self {
             kind,
@@ -78,6 +85,8 @@ impl<'a> Token<'a> {
             line,
             start,
             end,
+            col_start,
+            col_end
         }
     }
 

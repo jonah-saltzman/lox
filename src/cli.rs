@@ -49,6 +49,6 @@ impl Iterator for StdinLines {
 pub fn load_source(path: &Path) -> Result<AsciiString, SourceError> {
     let mut file = File::open(path)?;
     let mut buff: Vec<u8> = Vec::new();
-    file.read(&mut buff)?;
+    file.read_to_end(&mut buff)?;
     Ok(AsciiString::from(buff.as_ascii_str()?))
 }
